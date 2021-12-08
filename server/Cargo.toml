@@ -1,0 +1,25 @@
+[package]
+name     = "server"
+version  = "0.0.0"
+authors  = ["Jesse Braham <jesse@beta7.io>"]
+edition  = "2018"
+resolver = "2"
+publish  = false
+
+[dependencies]
+anyhow      = "1.0"
+esp-idf-sys = { version = "0.28", features = ["binstart"] }
+
+[build-dependencies]
+anyhow  = "1.0"
+embuild = "0.27"
+
+[features]
+native = ["esp-idf-sys/native"]
+
+[profile.dev]
+debug     = true
+opt-level = "z"
+
+[profile.release]
+opt-level = "s"
