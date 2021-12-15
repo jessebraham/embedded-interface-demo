@@ -7,14 +7,18 @@ resolver = "2"
 publish  = false
 
 [dependencies]
-anyhow      = "1.0"
-esp-idf-sys = { version = "0.28", features = ["binstart"] }
+anyhow       = "1.0"
+esp-idf-hal  = "0.29"
+esp-idf-svc  = "0.34"
+esp-idf-sys  = { version = "0.28", features = ["binstart"] }
+log          = "0.4"
 
 [build-dependencies]
 anyhow  = "1.0"
 embuild = "0.27"
 
 [features]
+default = ["native"]
 native = ["esp-idf-sys/native"]
 
 [profile.dev]
