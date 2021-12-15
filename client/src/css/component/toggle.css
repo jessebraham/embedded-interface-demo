@@ -1,0 +1,42 @@
+.toggle {
+  @apply cursor-pointer flex items-center;
+
+  .toggle-input {
+    @apply relative;
+  }
+
+  .toggle-label {
+    &:first-child {
+      @apply mr-4;
+    }
+
+    &:last-child {
+      @apply ml-4;
+    }
+
+    svg {
+      @apply h-8 w-8;
+    }
+  }
+
+  input {
+    @apply sr-only;
+  }
+
+  .line {
+    @apply bg-gray-600 block h-8 rounded-full w-14;
+  }
+
+  .dot {
+    @apply absolute bg-white h-6 left-1 rounded-full top-1 transition w-6;
+  }
+
+  input:checked ~ .dot {
+    @apply bg-yellow-400;
+    transform: translateX(100%);
+  }
+}
+
+.dark .toggle-label svg {
+  @apply text-white;
+}

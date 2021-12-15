@@ -2,6 +2,9 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+@import "./component/header.css";
+@import "./component/toggle.css";
+
 html,
 body,
 main,
@@ -9,6 +12,18 @@ main,
   @apply h-screen w-screen m-0 p-0;
 }
 
-#app {
-  @apply flex items-center justify-center;
+body {
+  @apply bg-yellow-400;
+}
+
+body.dark {
+  @apply bg-gray-800;
+}
+
+.layout {
+  @apply flex flex-col h-full items-center;
+
+  .content {
+    @apply flex flex-col flex-1 items-center justify-center;
+  }
 }

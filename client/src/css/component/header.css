@@ -1,0 +1,16 @@
+.header {
+  @apply bg-gray-600 h-20 mb-8 w-full;
+
+  nav {
+    @apply flex h-full items-center justify-center;
+
+    a {
+      @apply mx-8 text-lg text-white;
+
+      &:active,
+      &:hover {
+        @apply underline;
+      }
+    }
+  }
+}
