@@ -6,6 +6,10 @@ edition  = "2018"
 resolver = "2"
 publish  = false
 
+[package.metadata.espflash]
+bootloader      = "resources/bootloader.bin"
+partition_table = "resources/partitions.csv"
+
 [dependencies]
 anyhow       = "1.0"
 esp-idf-hal  = "0.29"
@@ -26,4 +30,5 @@ debug     = true
 opt-level = "z"
 
 [profile.release]
+lto       = true
 opt-level = "s"
