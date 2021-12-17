@@ -12,6 +12,7 @@ partition_table = "resources/partitions.csv"
 
 [dependencies]
 anyhow       = "1.0"
+embedded-svc = "0.15"
 esp-idf-hal  = "0.29"
 esp-idf-svc  = "0.34"
 esp-idf-sys  = { version = "0.28", features = ["binstart"] }

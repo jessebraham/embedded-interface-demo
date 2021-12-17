@@ -1,7 +1,13 @@
-use std::{convert::TryInto, ffi::CString, sync::Arc};
+use std::{
+    convert::TryInto,
+    ffi::CString,
+    sync::{Arc, Condvar, Mutex},
+};
 
 use anyhow::Result;
+use embedded_svc::httpd::registry::Registry;
 use esp_idf_svc::{
+    httpd::ServerRegistry,
     log::EspLogger,
     netif::EspNetifStack,
     nvs::EspDefaultNvs,
@@ -32,8 +38,13 @@ fn main() -> Result<()> {
 
     init_soft_ap()?;
 
+    run_server()?;
+
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// Wi-Fi Soft AP
 
 fn init_soft_ap() -> Result<()> {
     let wifi_init_config = wifi_init_config_default();
@@ -191,7 +202,37 @@ fn print_startup_message() {
     info!("SSID:     {}", WIFI_SSID);
     info!("PASSWORD: {}", WIFI_PASS);
     info!("");
-    info!("Wi-Fi soft AP has IP address: {}", DHCP_IP);
+    info!("Web server listening at: http://{}", DHCP_IP);
     info!("--------------------------------------------------------------");
     info!("");
+}
+
+// ---------------------------------------------------------------------------
+// Event Handlers
+
+// ---------------------------------------------------------------------------
+// MDNS
+
+// ---------------------------------------------------------------------------
+// Web Server
+
+fn run_server() -> Result<()> {
+    // TODO: convert to HTTPS server
+    let _server = ServerRegistry::new()
+        .at("/")
+        .get(|_| Ok("Hello from Rust!".into()))?
+        .start(&Default::default())?;
+
+    let mutex: Arc<(Mutex<Option<u32>>, Condvar)> = Arc::new((Mutex::new(None), Condvar::new()));
+    let mut wait = mutex.0.lock().unwrap();
+
+    let _cycles = loop {
+        if let Some(cycles) = *wait {
+            break cycles;
+        } else {
+            wait = mutex.1.wait(wait).unwrap();
+        }
+    };
+
+    Ok(())
 }
