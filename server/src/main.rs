@@ -1,4 +1,4 @@
-use std::{convert::TryInto, sync::Arc};
+use std::{convert::TryInto, ffi::CString, sync::Arc};
 
 use anyhow::Result;
 use esp_idf_svc::{
@@ -7,7 +7,7 @@ use esp_idf_svc::{
     nvs::EspDefaultNvs,
     sysloop::EspSysLoopStack,
 };
-use esp_idf_sys::*;
+use esp_idf_sys::{c_types::c_void, *};
 use log::info;
 
 // WiFI soft AP configuration.
@@ -16,6 +16,11 @@ const WIFI_SSID: &str = "ESP32-C3 Soft AP";
 const WIFI_PASS: &str = "Password123";
 const WIFI_CHAN: u8 = 6;
 const WIFI_CONN: u8 = 3;
+
+// DHCP configuration.
+const DHCP_IP: &str = "10.0.0.1";
+const DHCP_GW: &str = "10.0.0.1";
+const DHCP_NM: &str = "255.255.255.0";
 
 fn main() -> Result<()> {
     link_patches();
@@ -36,7 +41,8 @@ fn init_soft_ap() -> Result<()> {
 
     // Such unsafe wow
     unsafe {
-        esp_netif_create_default_wifi_ap();
+        let soft_ap = esp_netif_create_default_wifi_ap();
+        configure_dhcp(soft_ap)?;
 
         esp_result!(esp_wifi_init(&wifi_init_config), ())?;
 
@@ -45,14 +51,13 @@ fn init_soft_ap() -> Result<()> {
                 WIFI_EVENT,
                 ESP_EVENT_ANY_ID,
                 Some(wifi_event_handler),
-                0 as *mut c_types::c_void,
+                0 as *mut c_void,
                 0 as *mut esp_event_handler_instance_t,
             ),
             ()
         )?;
 
         esp_result!(esp_wifi_set_mode(wifi_mode_t_WIFI_MODE_AP), ())?;
-
         esp_result!(
             esp_wifi_set_config(
                 wifi_interface_t_WIFI_IF_AP,
@@ -64,17 +69,16 @@ fn init_soft_ap() -> Result<()> {
         esp_result!(esp_wifi_start(), ())?;
     }
 
-    info!("WiFi soft AP started");
-    info!("SSID: {}\tPASSWORD: {}", WIFI_SSID, WIFI_PASS);
+    print_startup_message();
 
     Ok(())
 }
 
 unsafe extern "C" fn wifi_event_handler(
-    _arg: *mut c_types::c_void,
+    _arg: *mut c_void,
     _event_base: *const i8,
     event_id: i32,
-    event_data: *mut c_types::c_void,
+    event_data: *mut c_void,
 ) {
     #[allow(non_upper_case_globals)]
     match event_id as u32 {
@@ -91,13 +95,8 @@ unsafe extern "C" fn wifi_event_handler(
 }
 
 fn wifi_init_config_default() -> wifi_init_config_t {
-    // FIXME: the `osi_funcs` field was previously causing errors using `default()`
-    //        (which is expected), however when setting the fields properly this now
-    //        causes a new error:
-    //
-    //        E (226) esp_image: invalid segment length 0xac02
-    //        E (232) boot: Factory app partition is not bootable
-    //        E (237) boot: No bootable app partitions in the partition table
+    // TODO: once the `WIFI_INIT_CONFIG_DEFAULT` macro has been wrapped or emulated
+    //       in `esp-idf-sys`, use that instead.
     wifi_init_config_t {
         event_handler: Some(esp_event_send_internal),
         osi_funcs: unsafe { &mut g_wifi_osi_funcs as *mut wifi_osi_funcs_t },
@@ -125,8 +124,6 @@ fn wifi_init_config_default() -> wifi_init_config_t {
 }
 
 fn build_wifi_config() -> Result<wifi_config_t> {
-    // Configure the WiFi peripheral as a soft AP, using the specificed
-    // SSID, password, channel, and max connections.
     let mut ap = wifi_ap_config_t::default();
     ap.ssid = string_to_array(WIFI_SSID)?;
     ap.ssid_len = WIFI_SSID.len() as u8;
@@ -151,4 +148,50 @@ fn string_to_array<const N: usize>(s: &str) -> Result<[u8; N]> {
     let array: [u8; N] = padded.as_bytes().try_into()?;
 
     Ok(array)
+}
+
+fn configure_dhcp(soft_ap: *mut esp_netif_obj) -> Result<()> {
+    let ip_info = esp_netif_ip_info_t {
+        ip: str_to_ip4_addr(DHCP_IP)?,
+        gw: str_to_ip4_addr(DHCP_GW)?,
+        netmask: str_to_ip4_addr(DHCP_NM)?,
+    };
+
+    unsafe {
+        esp_result!(esp_netif_dhcps_stop(soft_ap), ())?;
+        esp_result!(esp_netif_set_ip_info(soft_ap, &ip_info), ())?;
+        esp_result!(esp_netif_dhcps_start(soft_ap), ())?;
+    }
+
+    Ok(())
+}
+
+fn str_to_ip4_addr(addr: &str) -> Result<esp_ip4_addr_t> {
+    let mut bytes = CString::new(addr)?.into_bytes_with_nul();
+
+    let mut esp_ip = esp_ip4_addr_t::default();
+    unsafe {
+        esp_netif_str_to_ip4(
+            bytes.as_mut_ptr() as *mut i8,
+            &mut esp_ip as *mut esp_ip4_addr_t,
+        )
+    };
+
+    Ok(esp_ip)
+}
+
+fn print_startup_message() {
+    info!("");
+    info!("--------------------------------------------------------------");
+    info!(
+        "Wi-Fi soft AP has started, up to {} clients can connect using:",
+        WIFI_CONN
+    );
+    info!("");
+    info!("SSID:     {}", WIFI_SSID);
+    info!("PASSWORD: {}", WIFI_PASS);
+    info!("");
+    info!("Wi-Fi soft AP has IP address: {}", DHCP_IP);
+    info!("--------------------------------------------------------------");
+    info!("");
 }
