@@ -13,7 +13,7 @@ use esp_idf_svc::{
     nvs::EspDefaultNvs,
     sysloop::EspSysLoopStack,
 };
-use esp_idf_sys::{c_types::c_void, *};
+use esp_idf_sys::*;
 use log::info;
 
 // WiFI soft AP configuration.
@@ -37,7 +37,6 @@ fn main() -> Result<()> {
     let _sys_loop_stack = Arc::new(EspSysLoopStack::new()?);
 
     init_soft_ap()?;
-
     run_server()?;
 
     Ok(())
@@ -56,18 +55,6 @@ fn init_soft_ap() -> Result<()> {
         configure_dhcp(soft_ap)?;
 
         esp_result!(esp_wifi_init(&wifi_init_config), ())?;
-
-        esp_result!(
-            esp_event_handler_instance_register(
-                WIFI_EVENT,
-                ESP_EVENT_ANY_ID,
-                Some(wifi_event_handler),
-                0 as *mut c_void,
-                0 as *mut esp_event_handler_instance_t,
-            ),
-            ()
-        )?;
-
         esp_result!(esp_wifi_set_mode(wifi_mode_t_WIFI_MODE_AP), ())?;
         esp_result!(
             esp_wifi_set_config(
@@ -83,26 +70,6 @@ fn init_soft_ap() -> Result<()> {
     print_startup_message();
 
     Ok(())
-}
-
-unsafe extern "C" fn wifi_event_handler(
-    _arg: *mut c_void,
-    _event_base: *const i8,
-    event_id: i32,
-    event_data: *mut c_void,
-) {
-    #[allow(non_upper_case_globals)]
-    match event_id as u32 {
-        wifi_event_t_WIFI_EVENT_AP_STACONNECTED => {
-            let event = *event_data.cast::<wifi_event_ap_staconnected_t>();
-            info!("New client:  {:#?}", event.mac);
-        }
-        wifi_event_t_WIFI_EVENT_AP_STADISCONNECTED => {
-            let event = *event_data.cast::<wifi_event_ap_stadisconnected_t>();
-            info!("Client left: {:#?}", event.mac);
-        }
-        _ => { /* Ignore all other events for now */ }
-    }
 }
 
 fn wifi_init_config_default() -> wifi_init_config_t {
@@ -206,12 +173,6 @@ fn print_startup_message() {
     info!("--------------------------------------------------------------");
     info!("");
 }
-
-// ---------------------------------------------------------------------------
-// Event Handlers
-
-// ---------------------------------------------------------------------------
-// MDNS
 
 // ---------------------------------------------------------------------------
 // Web Server
