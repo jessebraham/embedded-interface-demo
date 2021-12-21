@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::Result;
-use embedded_svc::httpd::registry::Registry;
+use embedded_svc::httpd::{registry::Registry, *};
 use esp_idf_svc::{
     httpd::ServerRegistry,
     log::EspLogger,
@@ -180,8 +180,7 @@ fn print_startup_message() {
 fn run_server() -> Result<()> {
     // TODO: convert to HTTPS server
     let _server = ServerRegistry::new()
-        .at("/")
-        .get(|_| Ok("Hello from Rust!".into()))?
+        .handler(Handler::new("/", Method::Get, index_html_get_handler))?
         .start(&Default::default())?;
 
     let mutex: Arc<(Mutex<Option<u32>>, Condvar)> = Arc::new((Mutex::new(None), Condvar::new()));
@@ -196,4 +195,15 @@ fn run_server() -> Result<()> {
     };
 
     Ok(())
+}
+
+fn index_html_get_handler(_request: Request) -> Result<Response> {
+    let response = Response::new(200)
+        .content_encoding("gzip")
+        .content_type("text/html")
+        .body(Body::Bytes(
+            include_bytes!("../resources/index.html.gz").to_vec(),
+        ));
+
+    Ok(response)
 }

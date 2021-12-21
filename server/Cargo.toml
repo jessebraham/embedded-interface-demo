@@ -12,11 +12,17 @@ partition_table = "resources/partitions.csv"
 
 [dependencies]
 anyhow       = "1.0"
-embedded-svc = "0.15"
 esp-idf-hal  = "0.29"
-esp-idf-svc  = "0.34"
 esp-idf-sys  = { version = "0.28", features = ["binstart"] }
 log          = "0.4"
+
+[dependencies.embedded-svc]
+git    = "https://github.com/jessebraham/embedded-svc"
+branch = "feature/content-encoding"
+
+[dependencies.esp-idf-svc]
+git    = "https://github.com/jessebraham/esp-idf-svc"
+branch = "feature/content-encoding"
 
 [build-dependencies]
 anyhow  = "1.0"
@@ -24,7 +30,7 @@ embuild = "0.27"
 
 [features]
 default = ["native"]
-native = ["esp-idf-sys/native"]
+native  = ["esp-idf-sys/native"]
 
 [profile.dev]
 debug     = true
