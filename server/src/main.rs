@@ -37,9 +37,44 @@ fn main() -> Result<()> {
     let _sys_loop_stack = Arc::new(EspSysLoopStack::new()?);
 
     init_soft_ap()?;
-    run_server()?;
+
+    print_startup_message();
+
+    let server = ApplicationServer::new();
+    server.start()?;
 
     Ok(())
+}
+
+fn print_startup_message() {
+    info!("");
+    info!("--------------------------------------------------------------");
+    info!(
+        "Wi-Fi soft AP started, up to {} clients can connect using:",
+        WIFI_CONN
+    );
+    info!("");
+    info!("SSID:     {}", WIFI_SSID);
+    info!("PASSWORD: {}", WIFI_PASS);
+    info!("");
+    info!("Web server listening at: http://{}", DHCP_IP);
+    info!("--------------------------------------------------------------");
+    info!("");
+}
+
+// ---------------------------------------------------------------------------
+// Convenience Macros
+
+macro_rules! cstr {
+    ($input:expr) => {
+        CString::new($input)?.into_bytes_with_nul().as_mut_ptr() as *mut i8
+    };
+}
+
+macro_rules! set_ip {
+    ($input:expr, $output:expr) => {
+        esp_result!(esp_netif_str_to_ip4(cstr!($input), $output), ())?
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -66,8 +101,6 @@ fn init_soft_ap() -> Result<()> {
 
         esp_result!(esp_wifi_start(), ())?;
     }
-
-    print_startup_message();
 
     Ok(())
 }
@@ -129,13 +162,13 @@ fn string_to_array<const N: usize>(s: &str) -> Result<[u8; N]> {
 }
 
 fn configure_dhcp(soft_ap: *mut esp_netif_obj) -> Result<()> {
-    let ip_info = esp_netif_ip_info_t {
-        ip: str_to_ip4_addr(DHCP_IP)?,
-        gw: str_to_ip4_addr(DHCP_GW)?,
-        netmask: str_to_ip4_addr(DHCP_NM)?,
-    };
+    let mut ip_info = esp_netif_ip_info_t::default();
 
     unsafe {
+        set_ip!(DHCP_IP, &mut ip_info.ip);
+        set_ip!(DHCP_GW, &mut ip_info.gw);
+        set_ip!(DHCP_NM, &mut ip_info.netmask);
+
         esp_result!(esp_netif_dhcps_stop(soft_ap), ())?;
         esp_result!(esp_netif_set_ip_info(soft_ap, &ip_info), ())?;
         esp_result!(esp_netif_dhcps_start(soft_ap), ())?;
@@ -144,66 +177,48 @@ fn configure_dhcp(soft_ap: *mut esp_netif_obj) -> Result<()> {
     Ok(())
 }
 
-fn str_to_ip4_addr(addr: &str) -> Result<esp_ip4_addr_t> {
-    let mut bytes = CString::new(addr)?.into_bytes_with_nul();
-
-    let mut esp_ip = esp_ip4_addr_t::default();
-    unsafe {
-        esp_netif_str_to_ip4(
-            bytes.as_mut_ptr() as *mut i8,
-            &mut esp_ip as *mut esp_ip4_addr_t,
-        )
-    };
-
-    Ok(esp_ip)
-}
-
-fn print_startup_message() {
-    info!("");
-    info!("--------------------------------------------------------------");
-    info!(
-        "Wi-Fi soft AP has started, up to {} clients can connect using:",
-        WIFI_CONN
-    );
-    info!("");
-    info!("SSID:     {}", WIFI_SSID);
-    info!("PASSWORD: {}", WIFI_PASS);
-    info!("");
-    info!("Web server listening at: http://{}", DHCP_IP);
-    info!("--------------------------------------------------------------");
-    info!("");
-}
-
 // ---------------------------------------------------------------------------
 // Web Server
 
-fn run_server() -> Result<()> {
-    // TODO: convert to HTTPS server
-    let _server = ServerRegistry::new()
-        .handler(Handler::new("/", Method::Get, index_html_get_handler))?
-        .start(&Default::default())?;
-
-    let mutex: Arc<(Mutex<Option<u32>>, Condvar)> = Arc::new((Mutex::new(None), Condvar::new()));
-    let mut wait = mutex.0.lock().unwrap();
-
-    let _cycles = loop {
-        if let Some(cycles) = *wait {
-            break cycles;
-        } else {
-            wait = mutex.1.wait(wait).unwrap();
-        }
-    };
-
-    Ok(())
+#[derive(Debug, Clone)]
+struct ApplicationServer {
+    mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
 }
 
-fn index_html_get_handler(_request: Request) -> Result<Response> {
-    let response = Response::new(200)
-        .content_encoding("gzip")
-        .content_type("text/html")
-        .body(Body::Bytes(
-            include_bytes!("../resources/index.html.gz").to_vec(),
-        ));
+impl ApplicationServer {
+    pub fn new() -> Self {
+        Self {
+            mutex: Arc::new((Mutex::new(None), Condvar::new())),
+        }
+    }
 
-    Ok(response)
+    pub fn start(&self) -> Result<()> {
+        // TODO: convert to HTTPS server
+        let _server = ServerRegistry::new()
+            .handler(Handler::new("/", Method::Get, Self::index_html_get_handler))?
+            .start(&Default::default())?;
+
+        let mut wait = self.mutex.0.lock().unwrap();
+
+        let _cycles = loop {
+            if let Some(cycles) = *wait {
+                break cycles;
+            } else {
+                wait = self.mutex.1.wait(wait).unwrap();
+            }
+        };
+
+        Ok(())
+    }
+
+    fn index_html_get_handler(_request: Request) -> Result<Response> {
+        let response = Response::new(200)
+            .content_encoding("gzip")
+            .content_type("text/html")
+            .body(Body::Bytes(
+                include_bytes!("../resources/index.html.gz").to_vec(),
+            ));
+
+        Ok(response)
+    }
 }
