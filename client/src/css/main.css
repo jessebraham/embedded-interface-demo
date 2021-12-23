@@ -17,7 +17,7 @@ body {
 }
 
 body.dark {
-  @apply bg-gray-800;
+  @apply bg-gray-800 text-white;
 }
 
 .layout {
@@ -25,5 +25,13 @@ body.dark {
 
   .content {
     @apply flex flex-col flex-1 items-center justify-center;
+  }
+}
+
+table tr td {
+  @apply py-1;
+
+  &:first-child {
+    @apply font-bold pr-8 text-gray-300 text-sm uppercase;
   }
 }
