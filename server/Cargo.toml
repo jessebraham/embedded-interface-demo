@@ -11,10 +11,14 @@ bootloader      = "resources/bootloader.bin"
 partition_table = "resources/partitions.csv"
 
 [dependencies]
-anyhow       = "1.0"
-esp-idf-hal  = "0.29"
-esp-idf-sys  = { version = "0.28", features = ["binstart"] }
-log          = "0.4"
+anyhow      = "1.0"
+esp-idf-sys = { version = "0.28", features = ["binstart"] }
+json        = "0.12"
+log         = "0.4"
+
+[dependencies.esp-idf-hal]
+git      = "https://github.com/jessebraham/esp-idf-hal"
+branch   = "feature/chip-info"
 
 [dependencies.embedded-svc]
 git    = "https://github.com/jessebraham/embedded-svc"

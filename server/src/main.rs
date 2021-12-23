@@ -6,6 +6,7 @@ use std::{
 
 use anyhow::Result;
 use embedded_svc::httpd::{registry::Registry, *};
+use esp_idf_hal::chip_info::ChipInfo;
 use esp_idf_svc::{
     httpd::ServerRegistry,
     log::EspLogger,
@@ -14,6 +15,7 @@ use esp_idf_svc::{
     sysloop::EspSysLoopStack,
 };
 use esp_idf_sys::*;
+use json;
 use log::info;
 
 // WiFI soft AP configuration.
@@ -74,6 +76,12 @@ macro_rules! cstr {
 macro_rules! set_ip {
     ($input:expr, $output:expr) => {
         esp_result!(esp_netif_str_to_ip4(cstr!($input), $output), ())?
+    };
+}
+
+macro_rules! handler {
+    ($uri:expr, $method:ident, $handler:expr) => {
+        Handler::new($uri, Method::$method, $handler)
     };
 }
 
@@ -195,7 +203,8 @@ impl ApplicationServer {
     pub fn start(&self) -> Result<()> {
         // TODO: convert to HTTPS server
         let _server = ServerRegistry::new()
-            .handler(Handler::new("/", Method::Get, Self::index_html_get_handler))?
+            .handler(handler!("/", Get, Self::index_html_get_handler))?
+            .handler(handler!("/api/info", Get, Self::system_info_get_handler))?
             .start(&Default::default())?;
 
         let mut wait = self.mutex.0.lock().unwrap();
@@ -218,6 +227,34 @@ impl ApplicationServer {
             .body(Body::Bytes(
                 include_bytes!("../resources/index.html.gz").to_vec(),
             ));
+
+        Ok(response)
+    }
+
+    fn system_info_get_handler(_request: Request) -> Result<Response> {
+        let info = ChipInfo::new();
+
+        let model = info.model.unwrap().to_string();
+        let features = info
+            .features
+            .iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<_>>();
+
+        let payload = json::object! {
+            code: 200,
+            success: true,
+            data: {
+                model: model,
+                revision: info.revision,
+                cores: info.cores,
+                features: features,
+            },
+        };
+
+        let response = Response::new(200)
+            .content_type("application/json")
+            .body(Body::Bytes(payload.to_string().as_bytes().to_vec()));
 
         Ok(response)
     }
