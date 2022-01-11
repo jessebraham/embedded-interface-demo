@@ -1,0 +1,21 @@
+[patch.crates-io.embedded-svc]
+branch = "feature/content-encoding"
+git    = "https://github.com/jessebraham/embedded-svc"
+
+[patch.crates-io.getrandom]
+version = "0.2"
+git     = "https://github.com/esp-rs-compat/getrandom.git"
+
+[profile.dev]
+debug     = true
+opt-level = "z"
+
+[profile.release]
+lto       = true
+opt-level = "s"
+
+[workspace]
+members = [
+    "server",
+    "xtask",
+]

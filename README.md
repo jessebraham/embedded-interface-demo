@@ -2,7 +2,30 @@
 
 A self-hosted web interface running on an ESP32-C3, in Rust. Starts a soft AP and web server on the device.
 
-## Client
+## Quickstart
+
+This repository defines a build command adhering to the guidelines stated in the [cargo-xtask] repository. It assumes that both `npm` and `cargo` are accessible on your `$PATH`.
+
+```shell
+$ cargo xtask
+
+Usage: cargo xtask COMMAND
+
+COMMANDS:
+
+  build  -  Build the interface and the firmware, bundling them together
+
+```
+
+To build the web interface, place the distribution artifact in the correct location, and then subsequently build the firmware:
+
+```shell
+$ cargo xtask build
+```
+
+[cargo-xtask]: https://github.com/matklad/cargo-xtask
+
+### Building the Client
 
 Requires [nodejs] and `npm` to build.
 
@@ -24,9 +47,7 @@ $ cp dist/index.html.gz ../server/resources/
 
 [nodejs]: https://nodejs.org/en/
 
-## Server
-
-Requires the use of the Rust nightly release channel.
+### Flashing the Device
 
 With the `index.html.gz` file already copied into the `resources/` directory, from within the `server/` directory:
 

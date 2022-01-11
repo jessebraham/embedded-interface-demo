@@ -2,8 +2,7 @@
 name     = "server"
 version  = "0.0.0"
 authors  = ["Jesse Braham <jesse@beta7.io>"]
-edition  = "2018"
-resolver = "2"
+edition  = "2021"
 publish  = false
 
 [package.metadata.espflash]
@@ -21,12 +20,14 @@ git      = "https://github.com/jessebraham/esp-idf-hal"
 branch   = "feature/chip-info"
 
 [dependencies.embedded-svc]
-git    = "https://github.com/jessebraham/embedded-svc"
-branch = "feature/content-encoding"
+git      = "https://github.com/jessebraham/embedded-svc"
+branch   = "feature/content-encoding"
+features = ["experimental"]
 
 [dependencies.esp-idf-svc]
-git    = "https://github.com/jessebraham/esp-idf-svc"
-branch = "feature/content-encoding"
+git      = "https://github.com/jessebraham/esp-idf-svc"
+branch   = "feature/content-encoding"
+features = ["experimental"]
 
 [build-dependencies]
 anyhow  = "1.0"
@@ -35,11 +36,3 @@ embuild = "0.27"
 [features]
 default = ["native"]
 native  = ["esp-idf-sys/native"]
-
-[profile.dev]
-debug     = true
-opt-level = "z"
-
-[profile.release]
-lto       = true
-opt-level = "s"
