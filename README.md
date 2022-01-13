@@ -1,58 +1,41 @@
 # Embedded Interface Demo
 
-A self-hosted web interface running on an ESP32-C3, in Rust. Starts a soft AP and web server on the device.
+![MIT/Apache-2.0 licensed](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue?style=flat-square)
+
+A simple demonstration of a self-hosted web interface running on an ESP32-C3, in Rust. Starts a soft access point and a web server running on-device, and serves the bundled single-page app.
+
+This example is intended to be run on the [ESP32-C3-DevKitM-1] development board, however should work with any board based on the ESP32-C3 with some minor modifications.
+
+[esp32-c3-devkitm-1]: https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/hw-reference/esp32c3/user-guide-devkitm-1.html
 
 ## Quickstart
 
-This repository defines a build command adhering to the guidelines stated in the [cargo-xtask] repository. It assumes that both `npm` and `cargo` are accessible on your `$PATH`.
+A number of tools are required in order to build and flash this project. Please ensure that each dependency listed below has been properly installed on your system.
 
-```shell
-$ cargo xtask
+| Tool             | Download                           |
+| ---------------- | ---------------------------------- |
+| `cargo`          | https://rustup.rs/                 |
+| `npm`            | https://nodejs.org/en/             |
+| `cargo espflash` | https://github.com/esp-rs/espflash |
 
-Usage: cargo xtask COMMAND
+Commands for building and flashing the firmware have been included following the workflow defined by [cargo-xtask]. Please see the _cargo-xtask_ README for more information.
 
-COMMANDS:
+[cargo-xtask]: https://github.com/matklad/cargo-xtask
 
-  build  -  Build the interface and the firmware, bundling them together
+### Build the Interface and Firmware
 
-```
-
-To build the web interface, place the distribution artifact in the correct location, and then subsequently build the firmware:
+In order to build the web interface, place the bundled single-page application in the correct location, and subsequently build the firmware, from the root of the repository run:
 
 ```shell
 $ cargo xtask build
 ```
 
-[cargo-xtask]: https://github.com/matklad/cargo-xtask
+### Flash the Firmware
 
-### Building the Client
-
-Requires [nodejs] and `npm` to build.
-
-To install all dependencies and build the combined interface file, from within the `client/` directory:
+With your development board plugged in to your computer via a USB cable, you can then flash the firmware to the board and open a serial monitor when the process has completed:
 
 ```shell
-$ npm install
-$ npm run dev   # build for development
-$ npm run prod  # build for production
-$ npm run watch # watch for changes and automatically rebuild
-```
-
-To build the production version of the interface (ie. minified/gzipped) and place it in the correct location, from within the `client/` directory:
-
-```shell
-$ npm run prod
-$ cp dist/index.html.gz ../server/resources/
-```
-
-[nodejs]: https://nodejs.org/en/
-
-### Flashing the Device
-
-With the `index.html.gz` file already copied into the `resources/` directory, from within the `server/` directory:
-
-```shell
-$ cargo espflash --release --monitor
+$ cargo xtask flash
 ```
 
 ## License

@@ -8,9 +8,26 @@ use std::{
 use anyhow::Result;
 
 fn main() -> Result<()> {
-    match env::args().nth(1) {
-        Some(task) if task == "build" => build()?,
-        _ => usage(),
+    // The Cargo workspace is the parent directory of the path containing the
+    // 'xtask' package's Cargo manifest (ie. Cargo.toml).
+    let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workspace = workspace.parent().unwrap().canonicalize()?;
+
+    // Both the 'client' and 'server' projects are children of the workspace
+    // directory.
+    let client_path = workspace.join("client");
+    let server_path = workspace.join("server");
+
+    // If a valid task has been given, execute it. Otherwise, print the usage
+    // message and terminate.
+    if let Some(task) = env::args().nth(1) {
+        match task.as_str() {
+            "build" => build(&client_path, &server_path)?,
+            "flash" => flash(&client_path, &server_path)?,
+            _ => usage(),
+        }
+    } else {
+        usage();
     }
 
     Ok(())
@@ -19,22 +36,20 @@ fn main() -> Result<()> {
 fn usage() {
     println!(
         r#"
-Usage: cargo xtask COMMAND
+Usage: cargo xtask TASK
 
-COMMANDS:
+TASKS:
 
   build  -  Build the interface and the firmware, bundling them together
+  flash  -  Upload the firmware to the connected device, building if necessary
     "#
     );
 }
 
-fn build() -> Result<()> {
-    let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let workspace = workspace.parent().unwrap().canonicalize()?;
+// ---------------------------------------------------------------------------
+// Tasks
 
-    let client_path = workspace.join("client");
-    let server_path = workspace.join("server");
-
+fn build(client_path: &PathBuf, server_path: &PathBuf) -> Result<()> {
     eprintln!("\nBuilding 'client' project...");
     build_client(&client_path)?;
 
@@ -48,6 +63,23 @@ fn build() -> Result<()> {
 
     Ok(())
 }
+
+fn flash(client_path: &PathBuf, server_path: &PathBuf) -> Result<()> {
+    println!("foo");
+
+    if !release_artifact_exists(&server_path)? {
+        eprintln!("\nUnable to locate relase binary, building...");
+        build(&client_path, &server_path)?;
+    }
+
+    eprintln!("\nFlashing firmware to device...\n");
+    cargo_espflash(&server_path)?;
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Helper Functions
 
 fn build_client(path: &PathBuf) -> Result<()> {
     Command::new("npm")
@@ -67,4 +99,27 @@ fn build_server(path: &PathBuf) -> Result<()> {
         .output()?;
 
     Ok(())
+}
+
+fn cargo_espflash(path: &PathBuf) -> Result<()> {
+    Command::new("cargo")
+        .args(["espflash", "--release", "--monitor"])
+        .current_dir(path)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()?;
+
+    Ok(())
+}
+
+fn release_artifact_exists(server_path: &PathBuf) -> Result<bool> {
+    let workspace_path = server_path.parent().unwrap();
+    let bin_path = workspace_path.join("target/riscv32imc-esp-espidf/release/server");
+
+    let exists = match bin_path.canonicalize() {
+        Ok(path) => path.exists() && path.is_file(),
+        Err(_) => false,
+    };
+
+    Ok(exists)
 }
