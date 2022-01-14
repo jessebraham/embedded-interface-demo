@@ -1,14 +1,17 @@
-use std::sync::{Arc, Condvar, Mutex};
+use std::{sync::Arc, thread::sleep, time::Duration};
 
 use anyhow::Result;
 use embedded_svc::{
-    httpd::{registry::Registry, *},
+    http::{
+        server::{registry::Registry, Body, ResponseData},
+        SendHeaders,
+    },
     ipv4::{Ipv4Addr, Mask, RouterConfiguration, Subnet},
-    wifi::{AccessPointConfiguration, AuthMethod, Configuration, Wifi},
+    wifi::{AccessPointConfiguration, AuthMethod, Configuration as WifiConfiguration, Wifi},
 };
-use esp_idf_hal::chip_info::ChipInfo;
+use esp_idf_hal::{peripherals::Peripherals, prelude::*};
 use esp_idf_svc::{
-    httpd::ServerRegistry,
+    http::server::{Configuration as ServerConfiguration, EspHttpRequest, EspHttpServer},
     log::EspLogger,
     netif::EspNetifStack,
     nvs::EspDefaultNvs,
@@ -16,8 +19,11 @@ use esp_idf_svc::{
     wifi::EspWifi,
 };
 use esp_idf_sys::*;
-use json;
 use log::info;
+
+use self::chip_info::ChipInfo;
+
+mod chip_info;
 
 // WiFI soft AP configuration.
 // To disable authentication use an empty string as the password.
@@ -31,14 +37,30 @@ fn main() -> Result<()> {
     link_patches();
     EspLogger::initialize_default();
 
-    // Initialize the networking services.
+    // Set a GPIO as an output pin, and initially set its state HIGH (as we are
+    // driving an LED in an active-low configuration). One day this will use the
+    // built-in WS2812 via RMT instead.
+    let peripherals = Peripherals::take().unwrap();
+    let mut led = peripherals.pins.gpio5.into_output()?;
+    led.set_high()?;
+
+    // Initialize the Wi-Fi radio and configure it as a soft access point.
     let _wifi = initialize_soft_ap()?;
+
+    // Start the web server and register all routes/handlers.
+    let mut server = EspHttpServer::new(&ServerConfiguration::default())?;
+    server
+        .at("/")
+        .get(index_html_get_handler)?
+        .at("/api/info")
+        .get(system_info_get_handler)?;
+
+    // Print the startup message, then spin for eternity so that the server does not
+    // get dropped!
     print_startup_message();
-
-    let server = ApplicationServer::new();
-    server.start()?;
-
-    Ok(())
+    loop {
+        sleep(Duration::from_secs(1));
+    }
 }
 
 fn initialize_soft_ap() -> Result<EspWifi> {
@@ -72,9 +94,27 @@ fn initialize_soft_ap() -> Result<EspWifi> {
 
     // Initialize the Wi-Fi peripheral using the above configuration.
     let mut wifi = EspWifi::new(netif_stack, sys_loop_stack, default_nvs)?;
-    wifi.set_configuration(&Configuration::AccessPoint(config))?;
+    wifi.set_configuration(&WifiConfiguration::AccessPoint(config))?;
 
     Ok(wifi)
+}
+
+fn index_html_get_handler(_request: &mut EspHttpRequest) -> Result<ResponseData> {
+    let response = ResponseData::new(200)
+        .content_encoding("gzip")
+        .content_type("text/html")
+        .body(Body::Bytes(
+            include_bytes!("../resources/index.html.gz").to_vec(),
+        ));
+
+    Ok(response)
+}
+
+fn system_info_get_handler(_request: &mut EspHttpRequest) -> Result<ResponseData> {
+    let chip_info = ChipInfo::new();
+    let response = ResponseData::from_json(&chip_info)?;
+
+    Ok(response)
 }
 
 fn print_startup_message() {
@@ -91,85 +131,4 @@ fn print_startup_message() {
     info!("Web server listening at: http://{}", DHCP_GTWY);
     info!("--------------------------------------------------------------");
     info!("");
-}
-
-// ---------------------------------------------------------------------------
-// Web Server
-
-macro_rules! handler {
-    ($uri:expr, $method:ident, $handler:expr) => {
-        Handler::new($uri, Method::$method, $handler)
-    };
-}
-
-#[derive(Debug, Clone)]
-struct ApplicationServer {
-    mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
-}
-
-impl ApplicationServer {
-    pub fn new() -> Self {
-        Self {
-            mutex: Arc::new((Mutex::new(None), Condvar::new())),
-        }
-    }
-
-    pub fn start(&self) -> Result<()> {
-        // TODO: convert to HTTPS server
-        let _server = ServerRegistry::new()
-            .handler(handler!("/", Get, Self::index_html_get_handler))?
-            .handler(handler!("/api/info", Get, Self::system_info_get_handler))?
-            .start(&Default::default())?;
-
-        let mut wait = self.mutex.0.lock().unwrap();
-
-        let _cycles = loop {
-            if let Some(cycles) = *wait {
-                break cycles;
-            } else {
-                wait = self.mutex.1.wait(wait).unwrap();
-            }
-        };
-
-        Ok(())
-    }
-
-    fn index_html_get_handler(_request: Request) -> Result<Response> {
-        let response = Response::new(200)
-            .content_encoding("gzip")
-            .content_type("text/html")
-            .body(Body::Bytes(
-                include_bytes!("../resources/index.html.gz").to_vec(),
-            ));
-
-        Ok(response)
-    }
-
-    fn system_info_get_handler(_request: Request) -> Result<Response> {
-        let info = ChipInfo::new();
-
-        let model = info.model.unwrap().to_string();
-        let features = info
-            .features
-            .iter()
-            .map(|f| f.to_string())
-            .collect::<Vec<_>>();
-
-        let payload = json::object! {
-            code: 200,
-            success: true,
-            data: {
-                model: model,
-                revision: info.revision,
-                cores: info.cores,
-                features: features,
-            },
-        };
-
-        let response = Response::new(200)
-            .content_type("application/json")
-            .body(Body::Bytes(payload.to_string().as_bytes().to_vec()));
-
-        Ok(response)
-    }
 }

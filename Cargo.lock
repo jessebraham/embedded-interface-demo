@@ -341,15 +341,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "domain"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2eb073186f6285f852b9e71b544111306ab08da4a6b40c25a73f4c9ee3e3df29"
-dependencies = [
- "rand",
-]
-
-[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -366,13 +357,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "embedded-hal"
+version = "1.0.0-alpha.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "570e765da7319a256dfe1542f14501a53f74e020b68aa666a98b1ad31a614c7e"
+dependencies = [
+ "nb 1.0.0",
+]
+
+[[package]]
 name = "embedded-svc"
-version = "0.15.4"
-source = "git+https://github.com/jessebraham/embedded-svc?branch=feature/content-encoding#ae1f0534978238d6cbc5e4ffc61ed4f37ab74552"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "527d6f8df6ab472953388e4090705f0725879b84086944a06cb144da25461c9e"
 dependencies = [
  "anyhow",
  "async-trait",
- "domain",
  "enumset",
  "http-auth-basic",
  "log",
@@ -380,34 +380,9 @@ dependencies = [
  "num_enum",
  "serde",
  "serde_json",
- "strum 0.21.0",
- "strum_macros 0.21.1",
+ "strum 0.23.0",
+ "strum_macros 0.23.1",
  "url",
-]
-
-[[package]]
-name = "embuild"
-version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "326c4903c47a249dfa396f158c50ceb38f807579b6ee63e31870afa950a890f8"
-dependencies = [
- "anyhow",
- "bindgen",
- "bitflags",
- "cargo_toml",
- "cmake",
- "dirs",
- "globwalk",
- "log",
- "remove_dir_all 0.7.0",
- "serde",
- "serde_json",
- "shlex",
- "tempfile",
- "toml",
- "ureq",
- "which",
- "xmas-elf",
 ]
 
 [[package]]
@@ -432,6 +407,24 @@ dependencies = [
  "toml",
  "ureq",
  "which",
+ "xmas-elf",
+]
+
+[[package]]
+name = "embuild"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ac50d9a883a6c4ce38d3ac4a51c1a79c2ffd813b177ecb18feb798d76af5d2f"
+dependencies = [
+ "anyhow",
+ "bitflags",
+ "dirs",
+ "log",
+ "serde",
+ "serde_json",
+ "shlex",
+ "thiserror",
+ "toml",
  "xmas-elf",
 ]
 
@@ -472,59 +465,56 @@ dependencies = [
 
 [[package]]
 name = "esp-idf-hal"
-version = "0.29.4"
-source = "git+https://github.com/jessebraham/esp-idf-hal?branch=feature/chip-info#138020ba9fd541295250a2441cb4f3864d5ff682"
+version = "0.32.2"
 dependencies = [
  "anyhow",
- "embedded-hal",
+ "embedded-hal 0.2.6",
+ "embedded-hal 1.0.0-alpha.6",
  "embuild 0.27.2",
  "esp-idf-sys",
- "mutex-trait",
  "nb 0.1.3",
- "strum 0.23.0",
- "strum_macros 0.23.1",
 ]
 
 [[package]]
 name = "esp-idf-hal"
-version = "0.29.5"
+version = "0.32.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec8ae21f4fdc764f87142d7593cd1dc6324b40dfcbc054a9cc3a45c37fe4df8b"
+checksum = "4bf4f45a09fc85cff0cbb94469088b5cf63d06ea1480935fe580e900e642c317"
 dependencies = [
  "anyhow",
- "embedded-hal",
+ "embedded-hal 0.2.6",
+ "embedded-hal 1.0.0-alpha.6",
+ "embedded-svc",
  "embuild 0.27.2",
  "esp-idf-sys",
- "mutex-trait",
  "nb 0.1.3",
 ]
 
 [[package]]
 name = "esp-idf-svc"
-version = "0.34.1"
-source = "git+https://github.com/jessebraham/esp-idf-svc?branch=feature/content-encoding#94d2c295a06fc4c24679bd9aedd1ce6fdcf35c13"
+version = "0.36.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5a27e750a6d247506ec1e02870d3396c9b6b53785cc12d681499377b59b0230"
 dependencies = [
  "anyhow",
  "cstr_core",
  "embedded-svc",
- "embuild 0.26.0",
+ "embuild 0.27.2",
  "enumset",
- "esp-idf-hal 0.29.5",
+ "esp-idf-hal 0.32.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "esp-idf-sys",
  "log",
- "mutex-trait",
 ]
 
 [[package]]
 name = "esp-idf-sys"
-version = "0.28.3"
+version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dca4f1a672a5a79c00f4f18c4332c541f75fb54656726d1476653926698c6e4"
+checksum = "7d9b821f3cbcd94bff204d8e6293bd4ca7855cd961c515d195922a894306c3d3"
 dependencies = [
  "anyhow",
- "embedded-svc",
+ "bindgen",
  "embuild 0.27.2",
- "mutex-trait",
  "paste",
  "regex",
  "strum 0.21.0",
@@ -706,12 +696,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "json"
-version = "0.12.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd"
-
-[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -784,12 +768,6 @@ dependencies = [
  "adler",
  "autocfg",
 ]
-
-[[package]]
-name = "mutex-trait"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4bb1638d419e12f8b1c43d9e639abd0d1424285bdea2f76aa231e233c63cd3a"
 
 [[package]]
 name = "nb"
@@ -891,12 +869,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
-name = "ppv-lite86"
-version = "0.2.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
-
-[[package]]
 name = "proc-macro-crate"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -922,46 +894,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47aa80447ce4daf1717500037052af176af5d38cc3e571d9ec1c7353fc10c87d"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "rand"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e7573632e6454cf6b99d7aac4ccca54be06da05aca2ef7423d22d27d4d4bcd8"
-dependencies = [
- "libc",
- "rand_chacha",
- "rand_core",
- "rand_hc",
-]
-
-[[package]]
-name = "rand_chacha"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
-dependencies = [
- "ppv-lite86",
- "rand_core",
-]
-
-[[package]]
-name = "rand_core"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
-dependencies = [
- "getrandom",
-]
-
-[[package]]
-name = "rand_hc"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d51e9f596de227fda2ea6c84607f5558e196eeaf43c986b724ba4fb8fdf497e7"
-dependencies = [
- "rand_core",
 ]
 
 [[package]]
@@ -1160,12 +1092,13 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "embedded-svc",
- "embuild 0.27.2",
- "esp-idf-hal 0.29.4",
+ "embuild 0.28.0",
+ "esp-idf-hal 0.32.2",
  "esp-idf-svc",
  "esp-idf-sys",
- "json",
  "log",
+ "serde",
+ "strum_macros 0.23.1",
 ]
 
 [[package]]
@@ -1206,6 +1139,9 @@ name = "strum"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cae14b91c7d11c9a851d3fbc80a963198998c2a64eec840477fa92d8ce9b70bb"
+dependencies = [
+ "strum_macros 0.23.1",
+]
 
 [[package]]
 name = "strum_macros"
