@@ -10,7 +10,7 @@ const ChipInfo = {
     m.request({
       method: "GET",
       url: "/api/info",
-    }).then(({ data: { model, revision, cores, features } }) => {
+    }).then(({ model, revision, cores, features }) => {
       ChipInfo.model = model;
       ChipInfo.revision = revision;
       ChipInfo.cores = cores;

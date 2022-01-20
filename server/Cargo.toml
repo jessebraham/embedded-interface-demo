@@ -11,10 +11,11 @@ partition_table = "resources/partitions.csv"
 
 [dependencies]
 anyhow       = "1.0"
+embedded-hal = "1.0.0-alpha.6"
 embedded-svc = { version = "0.16", features = ["experimental"] }
-esp-idf-hal  = { path = "../../esp-idf-hal" }
+esp-idf-hal  = "0.32"
 esp-idf-svc  = { version = "0.36", features = ["experimental"] }
-esp-idf-sys  = { version = "0.29", features = ["binstart"] }
+esp-idf-sys  = { version = "0.30", features = ["binstart"] }
 log          = "0.4"
 serde        = { version = "1.0", features = ["derive"] }
 strum_macros = "0.23"

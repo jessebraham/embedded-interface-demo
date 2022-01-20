@@ -25,9 +25,18 @@ export default class Toggle {
 }
 
 function onToggleChange({ target: { checked } }) {
-  if (checked) {
-    document.body.classList.remove("dark");
-  } else {
-    document.body.classList.add("dark");
-  }
+  m.request({
+    method: "GET",
+    url: `/api/light/${checked ? "on" : "off"}`,
+  })
+    .then(() => {
+      if (checked) {
+        document.body.classList.remove("dark");
+      } else {
+        document.body.classList.add("dark");
+      }
+    })
+    .catch(() => {
+      target.checked = !checked;
+    });
 }

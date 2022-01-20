@@ -1,6 +1,11 @@
-use std::{sync::Arc, thread::sleep, time::Duration};
+use std::{
+    sync::{Arc, Mutex},
+    thread::sleep,
+    time::Duration,
+};
 
 use anyhow::Result;
+use embedded_hal::digital::blocking::OutputPin;
 use embedded_svc::{
     http::{
         server::{registry::Registry, Body, ResponseData},
@@ -9,7 +14,7 @@ use embedded_svc::{
     ipv4::{Ipv4Addr, Mask, RouterConfiguration, Subnet},
     wifi::{AccessPointConfiguration, AuthMethod, Configuration as WifiConfiguration, Wifi},
 };
-use esp_idf_hal::{peripherals::Peripherals, prelude::*};
+use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::{
     http::server::{Configuration as ServerConfiguration, EspHttpRequest, EspHttpServer},
     log::EspLogger,
@@ -44,6 +49,12 @@ fn main() -> Result<()> {
     let mut led = peripherals.pins.gpio5.into_output()?;
     led.set_high()?;
 
+    // Since the LED needs to be shared among handlers, we must first wrap it in a
+    // Mutex to ensure we don't have any races.
+    let led_mutex = Arc::new(Mutex::new(led));
+    let on_mutex = led_mutex.clone();
+    let off_mutex = led_mutex.clone();
+
     // Initialize the Wi-Fi radio and configure it as a soft access point.
     let _wifi = initialize_soft_ap()?;
 
@@ -53,7 +64,11 @@ fn main() -> Result<()> {
         .at("/")
         .get(index_html_get_handler)?
         .at("/api/info")
-        .get(system_info_get_handler)?;
+        .get(system_info_get_handler)?
+        .at("/api/light/on")
+        .get(move |request| light_on_get_handler(request, &on_mutex))?
+        .at("/api/light/off")
+        .get(move |request| light_off_get_handler(request, &off_mutex))?;
 
     // Print the startup message, then spin for eternity so that the server does not
     // get dropped!
@@ -115,6 +130,36 @@ fn system_info_get_handler(_request: &mut EspHttpRequest) -> Result<ResponseData
     let response = ResponseData::from_json(&chip_info)?;
 
     Ok(response)
+}
+
+fn light_on_get_handler<T>(
+    _request: &mut EspHttpRequest,
+    mutex: &Arc<Mutex<T>>,
+) -> Result<ResponseData>
+where
+    T: OutputPin,
+{
+    if let Ok(mut led) = mutex.lock() {
+        led.set_low().unwrap();
+        Ok(ResponseData::new(200))
+    } else {
+        Ok(ResponseData::new(500))
+    }
+}
+
+fn light_off_get_handler<T>(
+    _request: &mut EspHttpRequest,
+    mutex: &Arc<Mutex<T>>,
+) -> Result<ResponseData>
+where
+    T: OutputPin,
+{
+    if let Ok(mut led) = mutex.lock() {
+        led.set_high().unwrap();
+        Ok(ResponseData::new(200))
+    } else {
+        Ok(ResponseData::new(500))
+    }
 }
 
 fn print_startup_message() {
