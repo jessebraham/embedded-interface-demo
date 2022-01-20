@@ -65,12 +65,7 @@ fn build(client_path: &PathBuf, server_path: &PathBuf) -> Result<()> {
 }
 
 fn flash(client_path: &PathBuf, server_path: &PathBuf) -> Result<()> {
-    println!("foo");
-
-    if !release_artifact_exists(&server_path)? {
-        eprintln!("\nUnable to locate relase binary, building...");
-        build(&client_path, &server_path)?;
-    }
+    build(&client_path, &server_path)?;
 
     eprintln!("\nFlashing firmware to device...\n");
     cargo_espflash(&server_path)?;
@@ -105,21 +100,10 @@ fn cargo_espflash(path: &PathBuf) -> Result<()> {
     Command::new("cargo")
         .args(["espflash", "--release", "--monitor"])
         .current_dir(path)
+        .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()?;
 
     Ok(())
-}
-
-fn release_artifact_exists(server_path: &PathBuf) -> Result<bool> {
-    let workspace_path = server_path.parent().unwrap();
-    let bin_path = workspace_path.join("target/riscv32imc-esp-espidf/release/server");
-
-    let exists = match bin_path.canonicalize() {
-        Ok(path) => path.exists() && path.is_file(),
-        Err(_) => false,
-    };
-
-    Ok(exists)
 }
