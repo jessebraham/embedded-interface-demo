@@ -5,7 +5,6 @@ use std::{
 };
 
 use anyhow::Result;
-use embedded_hal::digital::blocking::OutputPin;
 use embedded_svc::{
     http::{
         server::{registry::Registry, Body, ResponseData},
@@ -14,7 +13,6 @@ use embedded_svc::{
     ipv4::{Ipv4Addr, Mask, RouterConfiguration, Subnet},
     wifi::{AccessPointConfiguration, AuthMethod, Configuration as WifiConfiguration, Wifi},
 };
-use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::{
     http::server::{Configuration as ServerConfiguration, EspHttpRequest, EspHttpServer},
     log::EspLogger,
@@ -26,9 +24,10 @@ use esp_idf_svc::{
 use esp_idf_sys::*;
 use log::info;
 
-use self::chip_info::ChipInfo;
+use self::{chip_info::ChipInfo, rgb_led::Led};
 
 mod chip_info;
+mod rgb_led;
 
 // WiFI soft AP configuration.
 // To disable authentication use an empty string as the password.
@@ -42,12 +41,10 @@ fn main() -> Result<()> {
     link_patches();
     EspLogger::initialize_default();
 
-    // Set a GPIO as an output pin, and initially set its state HIGH (as we are
-    // driving an LED in an active-low configuration). One day this will use the
-    // built-in WS2812 via RMT instead.
-    let peripherals = Peripherals::take().unwrap();
-    let mut led = peripherals.pins.gpio5.into_output()?;
-    led.set_high()?;
+    // Using the RMT peripheral, set up the RGB LED which is present on the
+    // development board.
+    let mut led = Led::new(rmt_channel_t_RMT_CHANNEL_0, gpio_num_t_GPIO_NUM_8)?;
+    led.set_color(0x00, 0x00, 0x00)?;
 
     // Since the LED needs to be shared among handlers, we must first wrap it in a
     // Mutex to ensure we don't have any races.
@@ -66,9 +63,9 @@ fn main() -> Result<()> {
         .at("/api/info")
         .get(system_info_get_handler)?
         .at("/api/light/on")
-        .get(move |request| light_on_get_handler(request, &on_mutex))?
+        .get(move |request| led_state_get_handler(request, &on_mutex, [0xFF, 0xFF, 0xFF]))?
         .at("/api/light/off")
-        .get(move |request| light_off_get_handler(request, &off_mutex))?;
+        .get(move |request| led_state_get_handler(request, &off_mutex, [0x00, 0x00, 0x00]))?;
 
     // Print the startup message, then spin for eternity so that the server does not
     // get dropped!
@@ -132,30 +129,13 @@ fn system_info_get_handler(_request: &mut EspHttpRequest) -> Result<ResponseData
     Ok(response)
 }
 
-fn light_on_get_handler<T>(
+fn led_state_get_handler(
     _request: &mut EspHttpRequest,
-    mutex: &Arc<Mutex<T>>,
-) -> Result<ResponseData>
-where
-    T: OutputPin,
-{
+    mutex: &Arc<Mutex<Led>>,
+    colors: [u8; 3],
+) -> Result<ResponseData> {
     if let Ok(mut led) = mutex.lock() {
-        led.set_low().unwrap();
-        Ok(ResponseData::new(200))
-    } else {
-        Ok(ResponseData::new(500))
-    }
-}
-
-fn light_off_get_handler<T>(
-    _request: &mut EspHttpRequest,
-    mutex: &Arc<Mutex<T>>,
-) -> Result<ResponseData>
-where
-    T: OutputPin,
-{
-    if let Ok(mut led) = mutex.lock() {
-        led.set_high().unwrap();
+        led.set_color(colors[0], colors[1], colors[2])?;
         Ok(ResponseData::new(200))
     } else {
         Ok(ResponseData::new(500))

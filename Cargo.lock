@@ -1014,10 +1014,8 @@ name = "server"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "embedded-hal 1.0.0-alpha.6",
  "embedded-svc",
  "embuild",
- "esp-idf-hal",
  "esp-idf-svc",
  "esp-idf-sys",
  "log",
